@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>WireGuard Config Builder</title>
+  <style>
+    body {
+      background: #0e1013;
+      color: #fff;
+      direction: rtl;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    h1, h2 {
+      color: #0af;
+    }
+    .box {
+      background: #1a1d23;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+    label {
+      margin-top: 10px;
+      display: block;
+      font-weight: bold;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      margin-bottom: 10px;
+      background: #252932;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: white;
+    }
+    button {
+      padding: 10px 16px;
+      background: #0af;
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>ساخت فایل WireGuard</h1>
+
+  <div class="box">
+    <label>نام فایل کانفیگ (بدون .conf):</label>
+    <input type="text" id="filename" placeholder="مثلاً MyGameVpn">
+
+    <label>کد ریدیم:</label>
+    <input type="text" id="redeem">
+
+    <label>اپراتور:</label>
+    <select id="operator"></select>
+
+    <label>سرور:</label>
+    <select id="server"></select>
+
+    <label>پورت:</label>
+    <input type="number" id="port" value="443">
+
+    <label>بازی:</label>
+    <select id="game"></select>
+
+    <button onclick="generateConfig()">🎮 تولید و دانلود فایل</button>
+  </div>
+
+  <div class="box">
+    <h2>📢 برای خرید به این آیدی مراجعه کنید:</h2>
+    <p id="telegram">@DefaultSupport</p>
+  </div>
+
+  <div class="box">
+    <h2>🔐 ورود ادمین</h2>
+    <input type="password" id="adminPass" placeholder="رمز عبور">
+    <button onclick="loginAdmin()">ورود</button>
+
+    <div id="adminPanel" class="hidden">
+      <label>تغییر آیدی تلگرام:</label>
+      <input type="text" id="telegramInput">
+      <button onclick="setTelegramID()">ذخیره آیدی</button>
+
+      <label>افزودن اپراتور:</label>
+      <input type="text" id="newOperator">
+      <button onclick="addOperator()">➕</button>
+
+      <label>افزودن سرور:</label>
+      <input type="text" id="serverName" placeholder="مثلاً آلمان - Hetzner">
+      <input type="text" id="serverIP" placeholder="مثلاً 168.119.50.50">
+      <button onclick="addServer()">➕</button>
+
+      <label>افزودن بازی:</label>
+      <input type="text" id="gameName" placeholder="نام بازی">
+      <input type="text" id="gameCIDR" placeholder="مثلاً 43.249.37.0/24">
+      <button onclick="addGame()">➕</button>
+
+      <label>ساخت کد ریدیم:</label>
+      <button onclick="generateCode()">🎫 تولید کد</button>
+      <textarea id="codeList" rows="4" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    const adminPassword = "pTAKAYP";
+    const clientKey = "wMzBFH26CKPyGMFMjB4XoweSSXePVF8BAxjmxKIzh3I=";
+    const serverKey = "rxFyqVGPYP7WkCeGGTx5YbxgKFdTY3v9eBKVYZkgWEE=";
+
+    let codes = ["ABCD1234", "XYZ9876"];
+    let operators = ["Irancell", "Hamrah Aval"];
+    let servers = { "آلمان - Hetzner": "168.119.50.50", "ایران - Mobinnet": "10.202.10.10" };
+    let games = { "PUBG": "43.249.37.0/24", "Call of Duty": "3.120.140.0/22" };
+
+    function fillDropdowns() {
+      document.getElementById("operator").innerHTML = operators.map(op => `<option>${op}</option>`).join('');
+      document.getElementById("server").innerHTML = Object.entries(servers).map(([name, ip]) => `<option value="${ip}">${name}</option>`).join('');
+      document.getElementById("game").innerHTML = Object.entries(games).map(([name, ip]) => `<option value="${ip}">${name}</option>`).join('');
+      document.getElementById("codeList").value = codes.join("\\n");
+    }
+
+    function generateConfig() {
+      const filename = document.getElementById("filename").value.trim();
+      const code = document.getElementById("redeem").value.trim();
+      if (!codes.includes(code)) return alert("کد نامعتبر یا مصرف‌شده است.");
+      codes = codes.filter(c => c !== code);
+      fillDropdowns();
+
+      const ip = document.getElementById("server").value;
+      const port = document.getElementById("port").value;
+      const cidr = document.getElementById("game").value;
+
+      const config = `[Interface]
+PrivateKey = ${clientKey}
+Address = 10.66.66.2/24
+DNS = 8.8.8.8
+
+[Peer]
+PublicKey = ${serverKey}
+Endpoint = ${ip}:${port}
+AllowedIPs = ${cidr}
+PersistentKeepalive = 25`;
+
+      const blob = new Blob([config], { type: "text/plain" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (filename || "wireguard") + ".conf";
+      a.click();
+    }
+
+    function loginAdmin() {
+      const pass = document.getElementById("adminPass").value;
+      if (pass === adminPassword) {
+        document.getElementById("adminPanel").classList.remove("hidden");
+        fillDropdowns();
+      } else {
+        alert("رمز اشتباه است!");
+      }
+    }
+
+    function setTelegramID() {
+      const id = document.getElementById("telegramInput").value.trim();
+      if (id.startsWith("@")) {
+        document.getElementById("telegram").innerText = id;
+        alert("آیدی ذخیره شد!");
+      } else {
+        alert("آیدی باید با @ شروع شود.");
+      }
+    }
+
+    function generateCode() {
+      const code = Math.random().toString(36).substr(2, 8).toUpperCase();
+      codes.push(code);
+      fillDropdowns();
+      alert("کد ساخته شد: " + code);
+    }
+
+    function addOperator() {
+      const op = document.getElementById("newOperator").value.trim();
+      if (op && !operators.includes(op)) {
+        operators.push(op);
+        fillDropdowns();
+        alert("اپراتور افزوده شد!");
+      }
+    }
+
+    function addServer() {
+      const name = document.getElementById("serverName").value.trim();
+      const ip = document.getElementById("serverIP").value.trim();
+      if (name && ip) {
+        servers[name] = ip;
+        fillDropdowns();
+        alert("سرور افزوده شد!");
+      }
+    }
+
+    function addGame() {
+      const name = document.getElementById("gameName").value.trim();
+      const cidr = document.getElementById("gameCIDR").value.trim();
+      if (name && cidr) {
+        games[name] = cidr;
+        fillDropdowns();
+        alert("بازی افزوده شد!");
+      }
+    }
+
+    window.onload = fillDropdowns;
+  </script>
+
+</body>
+</html>
